@@ -127,7 +127,7 @@ func Login() gin.HandlerFunc {
 			true,
 		)
 		// Возвращаем ID пользователя
-		c.JSON(http.StatusOK, gin.H{"user_id": foundUser.Id})
+		c.JSON(http.StatusOK, gin.H{"user_name": foundUser.Name, "user_id": foundUser.Id})
 	}
 }
 

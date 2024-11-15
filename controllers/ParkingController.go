@@ -92,43 +92,41 @@ func EndParkingSession() gin.HandlerFunc {
 		var ctx, cancel = context.WithTimeout(context.Background(), 100 * time.Second)
 		defer cancel()
 
-		var id string
 		cookie, err := c.Cookie("jwt")
-		id, err = helpers.CookieCheck(ctx, cookie, err, SecretKey)
+		_, err = helpers.CookieCheck(ctx, cookie, err, SecretKey)
 		if err != nil{
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 			return
 		}
 
 		var requestData struct{
-			pId 	string 		`json:pid`
-			bId 	*string 	`json:bid`
+			PId 	string 		`json:pid`
+			BId 	*string 	`json:bid`
 		}
-
 		var cost float64
-		var parkingSession models.ParkingSession
+	
 
 		//получили id сессии и льготы
-		if err := c.BindJSON(&parkingSession); err != nil{
+		if err := c.BindJSON(&requestData); err != nil{
 			c.JSON(http.StatusBadRequest, gin.H{"error":err.Error()})
 		}
+		
+		
+		cost, err = helpers.GetCostOfSession(conn, ctx, requestData.PId)
+		if err != nil{
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "msg":"2"})
+			return
+		} 
 
-
-		err = helpers.EndParkingSession(conn, ctx, id, requestData.pId)
+		err = helpers.EndParkingSession(conn, ctx, requestData.PId)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error(), "msg":"1"})
 			return
 		}
 
 		//если льгота есть
-		if requestData.bId != nil{
+		if requestData.BId != nil{
 			cost = 0
-		} else { //иначе считаем стоимость
-			cost, err = helpers.GetCostOfSession(conn, ctx, requestData.pId)
-			if err != nil{
-				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-				return
-			} 
 		}
 		c.JSON(http.StatusOK, gin.H{"message": "parking session ended successfully", "cost": cost})
 	}

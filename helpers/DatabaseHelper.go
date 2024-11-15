@@ -7,6 +7,7 @@ import(
 	"context"
 	"strconv"
 	"time"
+	"fmt"
 )
 
 //функции для работы с данными пользователя
@@ -183,9 +184,9 @@ func NewFine(conn *pgxpool.Pool, ctx context.Context, fine models.Fine) error{
 //функции для работы со льготами
 
 func NewBenefit(conn *pgxpool.Pool, ctx context.Context, benefit models.Benefit) error {
-	// Начальный запрос для добавления новой льготы и возврата её ID
+	// Запрос для добавления новой льготы и возврата её ID
 	queryAddBenefit := `
-		INSERT INTO "Parkovki"."Benefits" ("District", "Number", "Validity Period", user_id)
+		INSERT INTO "Parkovki"."Benefits" ("District", "Number", "Validity Period", "user_id")
 		VALUES ($1, $2, $3, $4)
 		RETURNING id;
 	`
@@ -196,17 +197,21 @@ func NewBenefit(conn *pgxpool.Pool, ctx context.Context, benefit models.Benefit)
 		return err
 	}
 
-	// Запрос для вставки записей в таблицу Benefits_Parkovki для всех парковок из того же района
+	// Запрос для вставки записей в таблицу Benefits_Parkovki для всех парковок из того же района или для всех парковок
 	queryLinkBenefitParkovki := `
 		INSERT INTO "Parkovki"."Benefits_Parkovki" ("Benefits_id", "Parkovki_id")
-		SELECT $1, park.id
-		FROM "Parkovki"."Parkovki" AS park
-		WHERE park."District" = $2;
+		SELECT $1, id
+		FROM "Parkovki"."Parkovki"
+		WHERE 
+			$2 = 'ALL'  -- если льгота применима ко всем парковкам
+			OR SUBSTRING(CAST("Zone Number" AS TEXT), 1, 2) = $2;  -- если дистрикт совпадает
 	`
 
+	// Выполнение запроса для вставки льготы в промежуточную таблицу
 	_, err = conn.Exec(ctx, queryLinkBenefitParkovki, benefitID, *benefit.District)
 	return err
 }
+
 
 
 func GetBenefits(conn *pgxpool.Pool, ctx context.Context, userId string)([]models.Benefit, error){
@@ -275,49 +280,73 @@ func NewParkingSession(conn *pgxpool.Pool, ctx context.Context, parkingSession m
 	return err
 }
 
-func EndParkingSession(conn *pgxpool.Pool, ctx context.Context, id, pId string) error{
+func EndParkingSession(conn *pgxpool.Pool, ctx context.Context, pId string) error{
+	var parkovkaId string
+    query := `
+        SELECT "parkovki_id"
+        FROM "Parkovki"."ParkingSession"
+        WHERE id = $1;
+    `
+    err := conn.QueryRow(ctx, query, pId).Scan(&parkovkaId)
+    if err != nil {
+        return err
+    }
+	
 	query1 := `
 	 	DELETE FROM "Parkovki"."ParkingSession"
         WHERE id = $1;
 	`
 
-	_, err := conn.Exec(ctx, query1, id)
+	_, err = conn.Exec(ctx, query1, pId)
 	if err != nil{
 		return err
 	}
 
+	
+
+	parkovkaIdInt, _ := strconv.Atoi(parkovkaId)
 	query2 := `
 		UPDATE "Parkovki"."Parkovki"
         SET "Number of seats" = "Number of seats" + 1
         WHERE id = $1;
 	`
-	_, err = conn.Exec(ctx, query2, pId)
+	_, err = conn.Exec(ctx, query2, parkovkaIdInt)
 	
 	return err
 	
 }
 
-func GetCostOfSession(conn *pgxpool.Pool, ctx context.Context, pId string)(float64, error){
+func GetCostOfSession(conn *pgxpool.Pool, ctx context.Context, pId string) (float64, error) {
 	var startTimeStr string
 	var parkovkaId int
-	
+	fmt.Printf("Looking for session with ID: %s\n", pId)
+	pIdInt, _ := strconv.Atoi(pId) // Преобразуем pId в integer
+
+	// Запрос для получения времени начала и parkovki_id
 	query1 := `
 		SELECT "Start Time", "parkovki_id" 
 		FROM "Parkovki"."ParkingSession" 
 		WHERE "id" = $1
 	`
 
-	err := conn.QueryRow(ctx, query1, pId).Scan(&startTimeStr, &parkovkaId)
-	if err != nil{
-		return -1, err
+	err := conn.QueryRow(ctx, query1, pIdInt).Scan(&startTimeStr, &parkovkaId)
+	if err != nil {
+		// Если сессия не найдена
+		return -1, fmt.Errorf("could not find session with id %s: %w", pId, err)
 	}
 
+	// Парсим время начала сессии
 	startTime, err := time.Parse(time.RFC3339, startTimeStr)
+	if err != nil {
+		return -1, fmt.Errorf("could not parse start time: %w", err)
+	}
+
+	// Рассчитываем длительность сессии
 	endTime := time.Now()
 	duration := endTime.Sub(startTime).Hours()
 
+	// Получаем стоимость парковки по parkovkaId
 	var hourlyRateStr string
-
 	query2 := `
 		SELECT "Cost"
 		FROM "Parkovki"."Parkovki"
@@ -325,16 +354,17 @@ func GetCostOfSession(conn *pgxpool.Pool, ctx context.Context, pId string)(float
 	`
 
 	err = conn.QueryRow(ctx, query2, parkovkaId).Scan(&hourlyRateStr)
-	if err != nil{
-		return -1, nil
+	if err != nil {
+		// Ошибка при получении стоимости
+		return -1, fmt.Errorf("could not find cost for parkovka %d: %w", parkovkaId, err)
 	}
-
-	hourlyRate, _ := strconv.Atoi(hourlyRateStr)
-
-	totalCost := duration * float64(hourlyRate)
+	hourlyRate, _ := strconv.ParseFloat(hourlyRateStr, 64)
+	// Вычисляем общую стоимость
+	totalCost := duration * hourlyRate
 	
 	return totalCost, nil
 }
+
 
 func GetParkingSessionAndBenefits(conn *pgxpool.Pool, ctx context.Context, id string) (*models.ParkingSessionAndBenefits, error){
 	var session models.ParkingSession
@@ -364,14 +394,18 @@ func GetParkingSessionAndBenefits(conn *pgxpool.Pool, ctx context.Context, id st
 	}
 	
 	query3 := `
-		SELECT b.id, b."District", b."Number", b."Validity Period", b.user_id
-		FROM "Parkovki"."Benefits" b
-		JOIN "Parkovki"."Benefits_Parkovki" bp ON b.id = bp."Benefits_id"
-		JOIN "Parkovki"."Parkovki" p ON p.id = bp."Parkovki_id"
-		WHERE p.id = $1 AND b.user_id = $2
+		SELECT DISTINCT b.*
+		FROM "Parkovki"."Benefits" AS b
+		JOIN "Parkovki"."Benefits_Parkovki" AS bp ON b.id = bp."Benefits_id"
+		JOIN "Parkovki"."Parkovki" AS p ON bp."Parkovki_id" = p.id
+		WHERE b.user_id = $1
+		  AND (
+				b."District" = 'ALL' OR
+				LEFT(p."Zone Number", 2) = b."District"
+			  );
 	`
 
-	rows, err := conn.Query(ctx, query3, *session.ParkovkaId, id)
+	rows, err := conn.Query(ctx, query3, id)
 	if err != nil{
 		return nil, err
 	}
@@ -379,7 +413,7 @@ func GetParkingSessionAndBenefits(conn *pgxpool.Pool, ctx context.Context, id st
 
 	for rows.Next(){
 		var benefit models.Benefit
-		err := rows.Scan(&benefit.Id, &benefit.District, &benefit.Number, &benefit.ValidityPeriod)
+		err := rows.Scan(&benefit.Id, &benefit.District, &benefit.Number, &benefit.ValidityPeriod, &benefit.UserId)
 		if err != nil{
 			return nil, err
 		}
@@ -404,4 +438,95 @@ func GetParkingByDistrict(conn *pgxpool.Pool, ctx context.Context, district stri
 	}
 
 	return &pId, nil
+}
+
+//конец функций для работы с парковочными сессиями
+// --------------------------------------------------------------
+//функции для работы с платными дорогами
+
+func GetMCD(conn *pgxpool.Pool, ctx context.Context, userId string) ([]models.TollRoad, error){
+	query := `
+		SELECT 
+			id,
+			"Status",
+			"Date",
+			"UIN"
+		FROM 
+			"Parkovki"."MCD"
+		WHERE 
+			"user_id" = $1;
+	`
+
+	rows, err := conn.Query(ctx, query, userId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tollRoads []models.TollRoad
+	for rows.Next() {
+		var road models.TollRoad
+		road.Type = "MCD"
+		if err := rows.Scan(&road.ID, &road.Status, &road.Date, &road.UIN); err != nil {
+			return nil, err
+		}
+		tollRoads = append(tollRoads, road)
+	}
+
+	return tollRoads, nil
+}
+
+func GetBagration(conn *pgxpool.Pool, ctx context.Context, userId string) ([]models.TollRoad, error){
+	query := `
+		SELECT 
+			id,
+			"Status",
+			"Date",
+			"UIN"
+		FROM 
+			"Parkovki"."Bagration"
+		WHERE 
+			"user_id" = $1;
+	`
+
+	rows, err := conn.Query(ctx, query, userId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tollRoads []models.TollRoad
+	for rows.Next() {
+		var road models.TollRoad
+		road.Type = "Bagration"
+		if err := rows.Scan(&road.ID, &road.Status, &road.Date, &road.UIN); err != nil {
+			return nil, err
+		}
+		tollRoads = append(tollRoads, road)
+	}
+
+	return tollRoads, nil
+}
+
+func PayForTollRoad(conn *pgxpool.Pool, ctx context.Context, roadID int, roadType string, userID int) error {
+	var query string
+
+	if roadType == "MCD" {
+		query = `
+			UPDATE "Parkovki"."MCD"
+			SET "Status" = true
+			WHERE id = $1 AND "user_id" = $2;
+		`
+	} else if roadType == "Bagration" {
+		query = `
+			UPDATE "Parkovki"."Bagration"
+			SET "Status" = true
+			WHERE id = $1 AND "user_id" = $2;
+		`
+	} else {
+		return fmt.Errorf("unknown road type")
+	}
+
+	_, err := conn.Exec(ctx, query, roadID, userID)
+	return err
 }
