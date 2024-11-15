@@ -38,7 +38,7 @@ func NewBenefit() gin.HandlerFunc {
 		randomNumberS := strconv.Itoa(randomNumber)
 		benefit.Number = &randomNumberS
 
-		date := time.Now().Format(time.RFC3339)
+		date := time.Now().AddDate(1, 0, 0).Format(time.RFC3339)
 		benefit.ValidityPeriod = &date
 		benefit.UserId = &id
 

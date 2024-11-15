@@ -1,54 +1,58 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from "react";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
-function LoginForm() {
-  const [phone, setPhone] = useState('');
-  const [password, setPassword] = useState('');
+function LoginForm({ setIsAuthenticated, setUser }) {
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError(""); // Сбрасываем предыдущую ошибку
 
-    const userData = { phone, password };
     try {
-      const response = await fetch('http://localhost:5000/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(userData),
+      const response = await axios.post("http://localhost:5000/login", {
+        phone,
+        password,
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        // Сохраняем ID и имя в localStorage
-        localStorage.setItem('userId', data.user_id);
-        localStorage.setItem('userName', data.user_name);
-        navigate('/profile'); // Редирект на /profile
-      } else {
-        console.error('Login failed');
+      if (response.status === 200) {
+        const { user_id, user_name } = response.data;
+        setIsAuthenticated(true);
+        setUser({ id: user_id, name: user_name });
+        navigate("/profile"); // Перенаправление в профиль
       }
     } catch (err) {
-      console.error('Error:', err);
+      setError("Invalid login credentials. Please try again.");
     }
   };
 
   return (
-    <form onSubmit={handleSubmit}>
-      <input
-        type="text"
-        placeholder="Phone"
-        value={phone}
-        onChange={(e) => setPhone(e.target.value)}
-      />
-      <input
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
-      <button type="submit">Login</button>
-    </form>
+    <div>
+      <h2>Login</h2>
+      {error && <p style={{ color: "red" }}>{error}</p>}
+      <form onSubmit={handleSubmit}>
+        <div>
+          <label>Phone:</label>
+          <input
+            type="text"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+          />
+        </div>
+        <div>
+          <label>Password:</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
+        <button type="submit">Login</button>
+      </form>
+    </div>
   );
 }
 

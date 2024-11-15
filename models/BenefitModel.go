@@ -1,9 +1,9 @@
 package models
 
 type Benefit struct{
-	Id 				string
+	Id 				string		`json:"id"`
 	District 		*string		`json:"district"`
-	Number			*string
-	ValidityPeriod	*string
-	UserId			*string		
+	Number			*string 	`json:"number"`
+	ValidityPeriod	*string		`json:"validity"`
+	UserId			*string		`json:"userid"`
 }

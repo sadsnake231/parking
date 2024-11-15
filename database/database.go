@@ -9,7 +9,7 @@ import(
 )
 
 func ConnectToDb() *pgxpool.Pool{
-	dbpool, err := pgxpool.New(context.Background(), "postgres://postgres:mynewpassword@localhost:5432/Parking")
+	dbpool, err := pgxpool.New(context.Background(), "postgres://postgres:mynewpassword@localhost:5432/Parkovki")
 	if err != nil{
 		fmt.Fprintf(os.Stderr, err.Error())
 	}

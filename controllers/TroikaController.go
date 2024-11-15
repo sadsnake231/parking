@@ -79,7 +79,7 @@ func PutMoney() gin.HandlerFunc {
 		
 		var requestData struct{
 			Number 	string 	`json:"number"`
-			Sum		int		`json:"sum`
+			Sum		int		`json:"sum"`
 		}
 
 		if err := c.BindJSON(&requestData); err != nil{

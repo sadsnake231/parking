@@ -1,75 +1,69 @@
-// src/components/SignupForm.js
-
 import React, { useState } from 'react';
+import axios from 'axios';
 
-function SignupForm() {
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
-  const [car, setCar] = useState('');
-  const [sts, setSts] = useState('');
-  const [password, setPassword] = useState('');
+const SignupForm = () => {
+  const [formData, setFormData] = useState({
+    name: '',
+    phone: '',
+    email: '',
+    carNumber: '',
+    sts: '',
+    password: '',
+  });
 
-  const handleSubmit = (e) => {
+  const [message, setMessage] = useState('');
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: value,
+    });
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const userData = { name, phone, email, car, sts, password };
-
-    console.log('User registered:', userData);
-    
-    fetch('http://localhost:5000/signup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(userData),
-    })
-      .then((response) => response.json())
-      .then((data) => alert('User registered successfully!'))
-      .catch((error) => alert('Error registering user: ' + error));
+    try {
+      const response = await axios.post('http://localhost:5000/signup', formData);
+      setMessage(`Registration successful! Welcome, ${response.data.name}`);
+    } catch (error) {
+      setMessage(error.response?.data?.error || 'Registration failed. Please try again.');
+    }
   };
 
   return (
     <div>
       <h2>Sign Up</h2>
       <form onSubmit={handleSubmit}>
-        <input
-          type="text"
-          placeholder="Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-        <input
-          type="text"
-          placeholder="Phone"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-        />
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <input
-          type="text"
-          placeholder="Car"
-          value={car}
-          onChange={(e) => setCar(e.target.value)}
-        />
-        <input
-          type="text"
-          placeholder="STS"
-          value={sts}
-          onChange={(e) => setSts(e.target.value)}
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        <button type="submit">Register</button>
+        <div>
+          <label>Name:</label>
+          <input type="text" name="name" value={formData.name} onChange={handleChange} required />
+        </div>
+        <div>
+          <label>Phone:</label>
+          <input type="text" name="phone" value={formData.phone} onChange={handleChange} required />
+        </div>
+        <div>
+          <label>Email:</label>
+          <input type="email" name="email" value={formData.email} onChange={handleChange} required />
+        </div>
+        <div>
+          <label>Car Number:</label>
+          <input type="text" name="carNumber" value={formData.carNumber} onChange={handleChange} required />
+        </div>
+        <div>
+          <label>STS:</label>
+          <input type="text" name="sts" value={formData.sts} onChange={handleChange} required />
+        </div>
+        <div>
+          <label>Password:</label>
+          <input type="password" name="password" value={formData.password} onChange={handleChange} required />
+        </div>
+        <button type="submit">Sign Up</button>
       </form>
+      {message && <p>{message}</p>}
     </div>
   );
-}
+};
 
 export default SignupForm;
