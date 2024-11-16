@@ -6,6 +6,9 @@ import SignupForm from "./components/SignupForm";
 import Fines from "./components/Fines";
 import Troika from "./components/Troika";
 import Benefits from "./components/Benefits";
+import Parking from "./components/Parking"
+import TollRoads from "./components/TollRoads"
+
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -34,6 +37,8 @@ function App() {
         <Route path="/troika" element={<Troika />} />
         <Route path="/fines" element={<Fines />} />
         <Route path="/benefits" element={<Benefits />} />
+        <Route path="/parking" element={<Parking />} />
+        <Route path="/tollroads" element={<TollRoads />} />
       </Routes>
     </Router>
   );

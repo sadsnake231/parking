@@ -1,19 +1,19 @@
 package models
 
 type ParkingSession struct{
-	Id 			string
-	StartTime 	*string
+	Id 			string		`json:sessionid`
+	StartTime 	*string		`json:"starttime"`
 	UserId		*string
-	ParkovkaId	*string		`json:"pid"`
+	ParkovkaId	*string
 }
 
 type ParkingSessionAndBenefits struct{
-	Session 	ParkingSession
-	Benefits	[]Benefit
-	Parking		Parking
+	Session 	ParkingSession	`json:"parkingsession"`
+	Benefits	[]Benefit		`json:"benefits"`
+	Parking		Parking			`json:"parking"`
 }
 
 type Parking struct{
-	District 	string
-	Cost		string
+	District 	string			`json:"district"`
+	Cost		string			`json:"cost`
 }

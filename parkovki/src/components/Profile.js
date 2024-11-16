@@ -15,6 +15,12 @@ function Profile() {
         <button>
           <Link to="/benefits">Льготы</Link>
         </button>
+        <button>
+          <Link to="/parking">Парковочная сессия</Link>
+        </button>
+        <button>
+          <Link to="/tollroads">Платные дороги</Link>
+        </button>
         <button onClick={() => window.location.href = "/"}>Выход</button>
       </div>
     </div>
@@ -22,4 +28,3 @@ function Profile() {
 }
 
 export default Profile;
-    
