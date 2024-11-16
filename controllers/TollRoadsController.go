@@ -72,6 +72,6 @@ func PayForTollRoad() gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"error": "toll road paid"})
+		c.JSON(http.StatusOK, gin.H{"message": "toll road paid"})
 	}
 }

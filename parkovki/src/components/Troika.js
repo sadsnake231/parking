@@ -73,27 +73,30 @@ const Troika = () => {
   };
 
   return (
-    <div>
-      <h1>Тройка</h1>
-      <button onClick={() => navigate("/profile")}>Назад</button>
+    <div style={containerStyle}>
+      <h1 style={headerStyle}>Тройка</h1>
+      <button onClick={() => navigate("/profile")} style={backButtonStyle}>
+        Назад
+      </button>
       
-      <div style={{ marginBottom: "20px" }}>
+      <div style={formContainerStyle}>
         <h2>Привязать новую карту</h2>
         <input
           type="text"
           placeholder="Номер карты"
           value={number}
           onChange={(e) => setNumber(e.target.value)}
+          style={inputStyle}
         />
-        <button onClick={handleAddCard}>Привязать</button>
+        <button onClick={handleAddCard} style={buttonStyle}>Привязать</button>
       </div>
 
-      <div>
+      <div style={formContainerStyle}>
         <h2>Привязанные карты</h2>
-        <button onClick={handleLoadCards}>Загрузить</button>
-        <ul>
+        <button onClick={handleLoadCards} style={buttonStyle}>Загрузить</button>
+        <ul style={listStyle}>
           {cards.map((card) => (
-            <li key={card.id}>
+            <li key={card.id} style={listItemStyle}>
               Карта {card.number}, баланс: {card.balance}, срок действия:{" "}
               {card.validity}
             </li>
@@ -101,26 +104,113 @@ const Troika = () => {
         </ul>
       </div>
 
-      <div style={{ marginTop: "20px" }}>
+      <div style={formContainerStyle}>
         <h2>Пополнить карту</h2>
         <input
           type="text"
           placeholder="Номер карты"
           value={cardNumberToRecharge}
           onChange={(e) => setCardNumberToRecharge(e.target.value)}
+          style={inputStyle}
         />
         <input
           type="number"
           placeholder="Сумма пополнения"
           value={sum}
           onChange={(e) => setSum(e.target.value)}
+          style={inputStyle}
         />
-        <button onClick={handleRechargeCard}>Пополнить</button>
+        <button onClick={handleRechargeCard} style={buttonStyle}>Пополнить</button>
       </div>
 
-      {message && <p>{message}</p>}
+      {message && <p style={messageStyle}>{message}</p>}
     </div>
   );
+};
+
+// Стили для контейнера
+const containerStyle = {
+  width: "100%",
+  maxWidth: "600px",
+  margin: "0 auto",
+  padding: "20px",
+  textAlign: "center",
+  backgroundColor: "#f9f9f9",
+  borderRadius: "8px",
+  boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+};
+
+// Стили для заголовка
+const headerStyle = {
+  marginBottom: "20px",
+  fontSize: "24px",
+  color: "#333",
+};
+
+// Стили для кнопки "Назад"
+const backButtonStyle = {
+  padding: "10px 20px",
+  backgroundColor: "#4CAF50",
+  color: "white",
+  fontSize: "16px",
+  border: "none",
+  borderRadius: "8px",
+  cursor: "pointer",
+  marginBottom: "20px",
+  textDecoration: "none",
+};
+
+// Стили для формы
+const formContainerStyle = {
+  marginBottom: "20px",
+  textAlign: "center",
+};
+
+// Стили для полей ввода
+const inputStyle = {
+  padding: "10px",
+  fontSize: "16px",
+  borderRadius: "8px",
+  border: "1px solid #ccc",
+  marginBottom: "10px",
+  width: "80%",
+  maxWidth: "400px",
+};
+
+// Стили для кнопок
+const buttonStyle = {
+  padding: "12px 20px",
+  backgroundColor: "#4CAF50",
+  color: "white",
+  fontSize: "18px",
+  border: "none",
+  borderRadius: "8px",
+  cursor: "pointer",
+  width: "80%",
+  maxWidth: "400px",
+};
+
+// Стили для списка карт
+const listStyle = {
+  listStyleType: "none",
+  padding: "0",
+  textAlign: "left",
+};
+
+// Стили для элемента списка карт
+const listItemStyle = {
+  backgroundColor: "#f1f1f1",
+  padding: "10px",
+  marginBottom: "10px",
+  borderRadius: "8px",
+};
+
+// Стили для сообщений
+const messageStyle = {
+  marginTop: "20px",
+  color: "#333",
+  fontSize: "16px",
+  fontWeight: "bold",
 };
 
 export default Troika;
