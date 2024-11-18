@@ -403,15 +403,21 @@ func GetParkingSessionAndBenefits(conn *pgxpool.Pool, ctx context.Context, id st
 	}
 	
 	query3 := `
-		SELECT DISTINCT b.*
-		FROM "Parkovki"."Benefits" AS b
-		JOIN "Parkovki"."Benefits_Parkovki" AS bp ON b.id = bp."Benefits_id"
-		JOIN "Parkovki"."Parkovki" AS p ON bp."Parkovki_id" = p.id
-		WHERE b.user_id = $1
-		  AND (
-				b."District" = 'ALL' OR
-				LEFT(p."Zone Number", 2) = b."District"
-			  );
+		WITH UserSession AS (
+  			SELECT ps."parkovki_id"
+  			FROM "Parkovki"."ParkingSession" AS ps
+  			WHERE ps."user_id" = $1
+		),
+		ApplicableBenefits AS (
+  		SELECT b.*
+  		FROM "Parkovki"."Benefits_Parkovki" AS bp
+  		JOIN "Parkovki"."Benefits" AS b ON bp."Benefits_id" = b.id
+  		WHERE bp."Parkovki_id" IN (SELECT "parkovki_id" FROM UserSession)
+    	AND b."user_id" = $1
+		)
+		SELECT DISTINCT * 
+		FROM ApplicableBenefits;
+
 	`
 
 	rows, err := conn.Query(ctx, query3, id)
