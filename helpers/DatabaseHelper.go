@@ -247,9 +247,11 @@ func GetBenefits(conn *pgxpool.Pool, ctx context.Context, userId string)([]model
 // --------------------------------------------------------------
 //функции для работы с парковками
 
+//каждая функция, работающая с СУБД, принимает подключение типа *pgxpool.Pool и контекст
 func GetNumberOfSeats(conn *pgxpool.Pool, ctx context.Context, pId string) (int, error) {
 	query := `SELECT "Number of seats" FROM "Parkovki"."Parkovki" WHERE id = $1`
 	var availableSeats int
+	//выполняем запрос и передаем результат в переменную
 	err := conn.QueryRow(ctx, query, pId).Scan(&availableSeats)
 	if err != nil{
 		return -1, err
@@ -264,12 +266,14 @@ func NewParkingSession(conn *pgxpool.Pool, ctx context.Context, parkingSession m
         VALUES ($1, $2, $3)
 	`
 
+	//вставляем парковочную сессию
 	_, err := conn.Exec(ctx, query1, *parkingSession.UserId, *parkingSession.ParkovkaId, *parkingSession.StartTime)
 
 	if err != nil{
 		return err
 	}
 	
+	//уменьшаем количество мест на парковке
 	query2 := `
 		UPDATE "Parkovki"."Parkovki"
         SET "Number of seats" = "Number of seats" - 1
@@ -287,6 +291,7 @@ func EndParkingSession(conn *pgxpool.Pool, ctx context.Context, pId string) erro
         FROM "Parkovki"."ParkingSession"
         WHERE id = $1;
     `
+	//получаем id парковки
     err := conn.QueryRow(ctx, query, pId).Scan(&parkovkaId)
     if err != nil {
         return err
@@ -297,13 +302,14 @@ func EndParkingSession(conn *pgxpool.Pool, ctx context.Context, pId string) erro
         WHERE id = $1;
 	`
 
+	//удаляем запись сессии
 	_, err = conn.Exec(ctx, query1, pId)
 	if err != nil{
 		return err
 	}
 
 	
-
+	//увеличиваем количество мест на парковки
 	parkovkaIdInt, _ := strconv.Atoi(parkovkaId)
 	query2 := `
 		UPDATE "Parkovki"."Parkovki"
@@ -339,7 +345,7 @@ func GetCostOfSession(conn *pgxpool.Pool, ctx context.Context, pId string) (floa
 	startTime, err := time.Parse(time.RFC3339, startTimeStr)
 	if err != nil {
 		return -1, fmt.Errorf("could not parse start time: %w", err)
-	}
+	}	
 
 	// Рассчитываем длительность сессии
 	endTime := time.Now()
@@ -371,6 +377,7 @@ func GetParkingSessionAndBenefits(conn *pgxpool.Pool, ctx context.Context, id st
 	var benefits []models.Benefit
 	var parking models.Parking
 	
+	//получаем данные о сессии
 	query1 := `
 		SELECT id, "Start Time", "parkovki_id" 
 		FROM "Parkovki"."ParkingSession" 
@@ -382,6 +389,8 @@ func GetParkingSessionAndBenefits(conn *pgxpool.Pool, ctx context.Context, id st
 		return nil, err
 	}
 
+
+	//зона и стоимость парковки
 	query2 := `
 		SELECT "Zone Number", "Cost"
 		FROM "Parkovki"."Parkovki"
@@ -410,7 +419,7 @@ func GetParkingSessionAndBenefits(conn *pgxpool.Pool, ctx context.Context, id st
 		return nil, err
 	}
 	defer rows.Close()
-
+	//получаем список льгот
 	for rows.Next(){
 		var benefit models.Benefit
 		err := rows.Scan(&benefit.Id, &benefit.District, &benefit.Number, &benefit.ValidityPeriod, &benefit.UserId)
@@ -432,6 +441,7 @@ func GetParkingByDistrict(conn *pgxpool.Pool, ctx context.Context, district stri
 	var pId string
 	query := `SELECT id FROM "Parkovki"."Parkovki" WHERE "Zone Number" = $1;`
 
+	//получаем данные о парковке по её району
 	err := conn.QueryRow(ctx, query, district).Scan(&pId)
 	if err != nil{
 		return nil, err

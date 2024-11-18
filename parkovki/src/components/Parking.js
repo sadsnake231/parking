@@ -7,7 +7,7 @@ function Parking() {
   const [error, setError] = useState('');
   const [district, setDistrict] = useState('');
   const [sessionId, setSessionId] = useState(null);
-  const [benefitId, setBenefitId] = useState(''); // Состояние для ID льготы
+  const [benefitId, setBenefitId] = useState('');
   const navigate = useNavigate();
 
   const loadSession = async () => {
@@ -15,9 +15,10 @@ function Parking() {
       setError('');
       const response = await axios.get('http://localhost:5000/parking/session', { withCredentials: true });
 
-      if (response.data) {
-        setSessionData(response.data);
-        setSessionId(response.data.Session.Id); // Сохраняем sessionId
+      // Проверяем наличие parkingsession в ответе
+      if (response.data && response.data.parkingsession) {
+        setSessionData(response.data); // Сохраняем все данные ответа
+        setSessionId(response.data.parkingsession.Id); // Сохраняем sessionId
       } else {
         setSessionData(null);
         setError('Нет активных сессий.');
@@ -39,7 +40,7 @@ function Parking() {
       await axios.post(
         'http://localhost:5000/parking/new',
         { district },
-        { withCredentials: true }
+        { withCredentials: true } //начинаем парковку
       );
       setError('');
       setError('Сессия успешно создана. Нажмите "Загрузить сессию", чтобы увидеть данные.');
@@ -59,7 +60,7 @@ function Parking() {
     try {
       await axios.delete(
         `http://localhost:5000/parking/session/end`,
-        { data: { Pid: sessionId, Bid: bid }, withCredentials: true }
+        { data: { Pid: sessionId, Bid: bid }, withCredentials: true } //завершаем сессию
       );
       setSessionData(null);
       setError('Сессия успешно завершена.');
@@ -120,13 +121,13 @@ function Parking() {
         {error && <p style={errorStyle}>{error}</p>}
         {sessionData ? (
           <div>
-            <p>Идентификатор сессии: {sessionData.Session.Id}</p>
-            <p>Время начала: {sessionData.Session.StartTime}</p>
-            <p>Зона парковки: {sessionData.Parking.District}</p>
-            <p>Стоимость: {sessionData.Parking.Cost}</p>
+            <p>Идентификатор сессии: {sessionData.parkingsession.Id}</p>
+            <p>Время начала: {sessionData.parkingsession.starttime}</p>
+            <p>Зона парковки: {sessionData.parking.district}</p>
+            <p>Стоимость: {sessionData.parking.Cost}</p>
             <h4>Льготы</h4>
             <ul style={listStyle}>
-              {sessionData.Benefits.map((benefit) => (
+              {sessionData.benefits.map((benefit) => (
                 <li key={benefit.id} style={listItemStyle}>
                   ID: {benefit.id}, Номер: {benefit.number}, Район: {benefit.district}, 
                   Действительна до: {benefit.validity}
